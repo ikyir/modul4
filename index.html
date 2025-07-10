@@ -11,32 +11,45 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <!-- Teachable Machine -->
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
+  <!-- jsPDF for Export PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
     body { background-color: #e5ddd5; padding-top: 30px; }
-    .chatbox { background-color: #fff; border-radius: 10px; padding: 20px; height: 500px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .chatbox { background-color: #fff; border-radius: 10px; padding: 20px; height: 400px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     .chat-bubble { max-width: 75%; padding: 10px 15px; border-radius: 20px; margin-bottom: 10px; }
     .chat-user { background-color: #dcf8c6; align-self: flex-end; margin-left: auto; }
     .chat-bot { background-color: #fff; border: 1px solid #ccc; align-self: flex-start; margin-right: auto; }
     .chat-row { display: flex; flex-direction: column; }
     #img-preview { display: none; max-width: 100%; margin-top: 10px; border-radius: 10px; }
-    #reset-btn { margin-top: 10px; }
+    .bottom-controls { display: flex; gap: 10px; margin-top: 10px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h3 class="text-center mb-4">🤖 Chatbot Deteksi Hewan</h3>
+    <h3 class="text-center mb-3">🤖 Chatbot Deteksi Hewan</h3>
 
+    <!-- Gambar Upload -->
     <div class="card p-3 mb-3">
       <input class="form-control" type="file" id="upload" accept="image/*">
       <img id="img-preview" class="img-fluid mt-2" />
-      <button class="btn btn-warning w-100" id="reset-btn">🔄 Ulangi Deteksi</button>
+      <div class="bottom-controls">
+        <button class="btn btn-warning flex-fill" id="reset-btn">🔄 Ulangi Deteksi</button>
+        <button class="btn btn-success flex-fill" id="export-btn">📲 Export ke PDF</button>
+      </div>
     </div>
 
-    <div class="chatbox d-flex flex-column" id="chatbox">
+    <!-- Chat Area -->
+    <div class="chatbox d-flex flex-column mb-3" id="chatbox">
       <div class="chat-row">
-        <div class="chat-bubble chat-bot">Silakan unggah gambar gajah, kuda, atau orangutan 🐘 🐎 🦧</div>
+        <div class="chat-bubble chat-bot">Silakan unggah gambar atau ajukan pertanyaan tentang gajah, kuda, atau orangutan 🐘 🐎 🦧</div>
       </div>
+    </div>
+
+    <!-- Input teks -->
+    <div class="input-group">
+      <input type="text" id="user-text" class="form-control" placeholder="Tanyakan sesuatu...">
+      <button class="btn btn-primary" id="send-btn">Kirim</button>
     </div>
   </div>
 
@@ -54,8 +67,11 @@
     const imgPreview = document.getElementById("img-preview");
     const chatbox = document.getElementById("chatbox");
     const resetBtn = document.getElementById("reset-btn");
+    const exportBtn = document.getElementById("export-btn");
+    const userText = document.getElementById("user-text");
+    const sendBtn = document.getElementById("send-btn");
 
-    function addChat(message, sender = "bot") {
+    function addChat(message, sender = "bot", speak = true) {
       const row = document.createElement("div");
       row.className = "chat-row";
 
@@ -66,16 +82,25 @@
       row.appendChild(bubble);
       chatbox.appendChild(row);
       chatbox.scrollTop = chatbox.scrollHeight;
+
+      if (sender === "bot" && speak) {
+        speakText(message);
+      }
+    }
+
+    function speakText(text) {
+      const utterance = new SpeechSynthesisUtterance(text.replace(/<[^>]*>?/gm, ''));
+      utterance.lang = 'id-ID';
+      speechSynthesis.speak(utterance);
     }
 
     function resetChat() {
-      // Reset tampilan
       uploadInput.value = "";
       imgPreview.src = "";
       imgPreview.style.display = "none";
       chatbox.innerHTML = `
         <div class="chat-row">
-          <div class="chat-bubble chat-bot">Silakan unggah gambar gajah, kuda, atau orangutan 🐘 🐎 🦧</div>
+          <div class="chat-bubble chat-bot">Silakan unggah gambar atau ajukan pertanyaan tentang gajah, kuda, atau orangutan 🐘 🐎 🦧</div>
         </div>
       `;
     }
@@ -88,9 +113,7 @@
       reader.onload = function (e) {
         imgPreview.src = e.target.result;
         imgPreview.style.display = "block";
-
-        // Tambahkan pesan user
-        addChat("Saya mengunggah gambar ini...", "user");
+        addChat("Saya mengunggah gambar ini...", "user", false);
 
         imgPreview.onload = async () => {
           if (!model) return addChat("Model belum siap. Silakan tunggu...", "bot");
@@ -105,34 +128,70 @@
           const threshold = 0.7;
 
           if (confidence >= threshold && validLabels.includes(label)) {
-            addChat(`Saya mendeteksi ini adalah <strong>${label.toUpperCase()}</strong> dengan keyakinan ${(confidence * 100).toFixed(1)}%.`, "bot");
+            addChat(`Saya mendeteksi ini adalah <strong>${label.toUpperCase()}</strong> dengan keyakinan ${(confidence * 100).toFixed(1)}%.`);
             setTimeout(() => {
-              addChat(getAnimalInfo(label), "bot");
+              addChat(getAnimalInfo(label));
             }, 500);
           } else {
-            addChat(`⚠️ Maaf, saya tidak yakin ini adalah salah satu hewan yang saya kenali. Coba unggah gambar gajah, kuda, atau orangutan yang lebih jelas.`, "bot");
+            addChat("⚠️ Maaf, saya tidak yakin ini adalah salah satu hewan yang saya kenali.");
           }
         };
       };
       reader.readAsDataURL(file);
     });
 
-    resetBtn.addEventListener("click", () => {
-      resetChat();
-    });
-
     function getAnimalInfo(label) {
       switch (label) {
         case 'gajah':
-          return `🐘 <strong>Gajah</strong><br><b>Sifat:</b> Sosial, penyayang, cerdas.<br><b>Ciri:</b> Belalai panjang, tubuh besar.<br><b>Kebiasaan:</b> Hidup berkelompok, mandi lumpur.`;
+          return `🐘 <strong>Gajah</strong><br><b>Sifat:</b> Sosial, penyayang, cerdas.<br><b>Ciri:</b> Tubuh besar, belalai panjang.<br><b>Kebiasaan:</b> Hidup berkelompok, suka mandi lumpur.`;
         case 'kuda':
-          return `🐎 <strong>Kuda</strong><br><b>Sifat:</b> Setia, enerjik.<br><b>Ciri:</b> Tubuh ramping, kaki kuat.<br><b>Kebiasaan:</b> Berlari cepat, merumput.`;
+          return `🐎 <strong>Kuda</strong><br><b>Sifat:</b> Enerjik, setia.<br><b>Ciri:</b> Tubuh ramping, kaki kuat.<br><b>Kebiasaan:</b> Merumput, berlari cepat, mudah dilatih.`;
         case 'orangutan':
-          return `🦧 <strong>Orangutan</strong><br><b>Sifat:</b> Cerdas, penyendiri.<br><b>Ciri:</b> Bulu merah, lengan panjang.<br><b>Kebiasaan:</b> Tinggal di pohon, makan buah.`;
+          return `🦧 <strong>Orangutan</strong><br><b>Sifat:</b> Cerdas, pemalu, penyendiri.<br><b>Ciri:</b> Bulu kemerahan, lengan panjang.<br><b>Kebiasaan:</b> Hidup di pohon, makan buah, membuat sarang.`;
         default:
           return "";
       }
     }
+
+    sendBtn.addEventListener("click", () => {
+      const message = userText.value.trim();
+      if (!message) return;
+
+      addChat(message, "user", false);
+      handleUserQuestion(message.toLowerCase());
+      userText.value = "";
+    });
+
+    function handleUserQuestion(msg) {
+      const q = msg.toLowerCase();
+      if (q.includes("gajah")) {
+        addChat(getAnimalInfo("gajah"));
+      } else if (q.includes("kuda")) {
+        addChat(getAnimalInfo("kuda"));
+      } else if (q.includes("orangutan")) {
+        addChat(getAnimalInfo("orangutan"));
+      } else {
+        addChat("Saya hanya bisa menjelaskan tentang gajah, kuda, atau orangutan.");
+      }
+    }
+
+    resetBtn.addEventListener("click", () => resetChat());
+
+    exportBtn.addEventListener("click", () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 10;
+
+      const bubbles = chatbox.querySelectorAll(".chat-bubble");
+      bubbles.forEach((el, i) => {
+        const role = el.classList.contains("chat-user") ? "User" : "Bot";
+        const text = el.innerText;
+        doc.text(`${role}: ${text}`, 10, y);
+        y += 10;
+      });
+
+      doc.save("chatbot-hewan.pdf");
+    });
   </script>
 
   <!-- Bootstrap JS -->
