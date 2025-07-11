@@ -16,7 +16,7 @@
     .chat-bot { background-color: #fff; border: 1px solid #ccc; align-self: flex-start; margin-right: auto; }
     .chat-row { display: flex; flex-direction: column; }
     #img-preview { display: none; max-width: 100%; margin-top: 10px; border-radius: 10px; }
-    .bottom-controls { display: flex; gap: 10px; margin-top: 10px; }
+    .bottom-controls { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
   </style>
 </head>
 <body>
@@ -26,12 +26,11 @@
     <div class="card p-3 mb-3">
       <input class="form-control" type="file" id="upload" accept="image/*">
       <img id="img-preview" class="img-fluid mt-2" />
-      <!-- Tombol di bawah upload -->
-<div class="bottom-controls">
-  <button class="btn btn-warning flex-fill" id="reset-btn">🔄 Ulangi Deteksi</button>
-  <button class="btn btn-success flex-fill" id="export-btn">📲 Export ke PDF</button>
-  <a href="https://s.id/qvCpu" target="_blank" class="btn btn-info flex-fill">📁 Dataset</a>
-</div>
+      <div class="bottom-controls">
+        <button class="btn btn-warning flex-fill" id="reset-btn">🔄 Ulangi Deteksi</button>
+        <button class="btn btn-success flex-fill" id="export-btn">📲 Export ke PDF</button>
+        <a href="https://drive.google.com/drive/folders/1BFiKQe38AT1UC_Nw1p4g4CWao5wtcZFB?usp=sharing" target="_blank" class="btn btn-info flex-fill">📁 Dataset</a>
+      </div>
     </div>
 
     <div class="chatbox d-flex flex-column mb-3" id="chatbox">
